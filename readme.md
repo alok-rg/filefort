@@ -1,8 +1,16 @@
 # FileFort - Secure File Vault System
+<div align="center">
+  <img src="authentication\static\img\fort.ico" alt="Cindox Logo" width="80" height="80" style="border-radius: 10px; box-shadow: 0 0 10px 1px #4df9f9ff;">
+    <br>
+    <br>
 
+    
 ![Django](https://img.shields.io/badge/Django-5.2.5-092E20?style=for-the-badge&logo=django)
 ![Python](https://img.shields.io/badge/Python-3.x-3776AB?style=for-the-badge&logo=python)
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite)
+</div>
+
+
 
 ## 📋 Table of Contents
 - [Overview](#-overview)
