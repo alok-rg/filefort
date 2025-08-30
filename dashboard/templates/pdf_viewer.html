@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>PDF Viewer - {{ file_name }}</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            background: #181c24; 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #e0e0e0;
+        }
+        #main-container {
+            max-width: 950px;
+            margin: 40px auto 0 auto;
+            background: #232733;
+            border-radius: 10px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+            padding: 30px 30px 20px 30px;
+        }
+        #pdf-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+        }
+        #pdf-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #e0e0e0;
+            letter-spacing: 0.5px;
+        }
+        #controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        .pdf-btn {
+            padding: 8px 18px;
+            background: #2d3748;
+            color: #e0e0e0;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .pdf-btn:hover {
+            background: #3b4252;
+        }
+        .pdf-btn:disabled {
+            background: #444c5c;
+            cursor: not-allowed;
+        }
+        #downloadBtn {
+            background: #3fb950;
+            color: #fff;
+        }
+        #downloadBtn:hover {
+            background: #2ea043;
+        }
+        #closeBtn {
+            background: #e74c3c;
+        }
+        #closeBtn:hover {
+            background: #c0392b;
+        }
+        #pageInfo {
+            font-weight: 500;
+            color: #bfc7d5;
+            margin: 0 10px;
+        }
+        #loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 18px;
+            color: #bfc7d5;
+        }
+        .error {
+            color: #ff7b7b;
+            text-align: center;
+            padding: 20px;
+        }
+        #pdf-container {
+            text-align: center;
+        }
+        .pdf-page {
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+            border-radius: 4px;
+            display: inline-block;
+            background: #232733;
+        }
+        @media (max-width: 600px) {
+            #main-container {
+                padding: 10px;
+            }
+            #pdf-title {
+                font-size: 1rem;
+            }
+            .pdf-btn {
+                font-size: 0.9rem;
+                padding: 7px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Loading PDF...</div>
+    <div id="main-container" style="display:none;">
+        <div id="pdf-header">
+            <div id="pdf-title">{{ file_name }}</div>
+            <div>
+                {% if is_download %}
+                    <button id="downloadBtn" class="pdf-btn">Download</button>
+                {% endif %}
+                <button id="closeBtn" class="pdf-btn" onclick="window.close()">Close</button>
+            </div>
+        </div>
+        <div id="controls">
+            <button id="prevBtn" class="pdf-btn" onclick="previousPage()">← Previous</button>
+            <span id="pageInfo">Page <span id="pageNum">1</span> of <span id="pageCount">--</span></span>
+            <button id="nextBtn" class="pdf-btn" onclick="nextPage()">Next →</button>
+        </div>
+        <div id="pdf-container"></div>
+    </div>
+
+    <script>
+        let pdfDoc = null;
+        let pageNum = 1;
+        let pageRendering = false;
+        let pageNumPending = null;
+        const scale = 1.5;
+
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const pdfUrl = '/pdf/stream/{{ token }}/';
+
+        pdfjsLib.getDocument(pdfUrl).promise.then(function(pdfDoc_) {
+            pdfDoc = pdfDoc_;
+            document.getElementById('pageCount').textContent = pdfDoc.numPages;
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('main-container').style.display = 'block';
+            renderPage(pageNum);
+            updateButtons();
+        }).catch(function(error) {
+            console.error('Error loading PDF:', error);
+            document.getElementById('loading').innerHTML = '<div class="error">Error loading PDF. Please try again.</div>';
+        });
+
+        function renderPage(num) {
+            pageRendering = true;
+            pdfDoc.getPage(num).then(function(page) {
+                const viewport = page.getViewport({scale: scale});
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                canvas.className = 'pdf-page';
+
+                // Fill canvas background for dark mode
+                ctx.fillStyle = "#232733";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+
+                const renderTask = page.render(renderContext);
+                renderTask.promise.then(function() {
+                    pageRendering = false;
+                    if (pageNumPending !== null) {
+                        renderPage(pageNumPending);
+                        pageNumPending = null;
+                    }
+                    const container = document.getElementById('pdf-container');
+                    container.innerHTML = '';
+                    container.appendChild(canvas);
+                });
+            });
+
+            document.getElementById('pageNum').textContent = num;
+            updateButtons();
+        }
+
+        function queueRenderPage(num) {
+            if (pageRendering) {
+                pageNumPending = num;
+            } else {
+                renderPage(num);
+            }
+        }
+
+        function previousPage() {
+            if (pageNum <= 1) return;
+            pageNum--;
+            queueRenderPage(pageNum);
+        }
+
+        function nextPage() {
+            if (pageNum >= pdfDoc.numPages) return;
+            pageNum++;
+            queueRenderPage(pageNum);
+        }
+
+        function updateButtons() {
+            document.getElementById('prevBtn').disabled = pageNum <= 1;
+            document.getElementById('nextBtn').disabled = pageNum >= (pdfDoc ? pdfDoc.numPages : 1);
+        }
+
+        // Download feature
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            window.location.href = '/pdf/stream/{{ token }}/?download=1';
+        });
+
+        // Prevent right-click and other context menu attempts
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+
+        // Prevent common keyboard shortcuts for saving/printing
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && (e.key === 's' || e.key === 'p')) {
+                e.preventDefault();
+                alert('Download/Print is not allowed for this document.');
+            }
+        });
+    </script>
+</body>
+</html>

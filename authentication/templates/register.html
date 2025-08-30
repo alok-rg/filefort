@@ -1,0 +1,41 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+</head>
+
+<body>
+    <div class="header">
+        <h1>File-Fort</h1>
+        <h3>Your files, your fortress</h3>
+    </div>
+    <div class="form">
+        <form method="post" action="{% url 'register' %}">
+            {% csrf_token %}
+            {% if error %}
+                <p class="error-message">{{ error }}</p>
+            {% endif %}
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" placeholder="Enter your email" required>
+            <!-- <br> -->
+            <label for="first_name">Name:</label>
+            <input type="text" id="first_name" name="first_name" placeholder="Enter your name" required>
+            <!-- <br> -->
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" placeholder="Enter your username" required>
+            <!-- <br> -->
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" placeholder="Enter your password" required>
+            <!-- <br> -->
+            <p>Already have an account? <a href="{% url 'login' %}" style="color: rgb(40, 179, 218);">Login here</a></p>
+            <button type="submit">Register</button>
+        </form>
+    </div>
+</body>
+
+</html>
