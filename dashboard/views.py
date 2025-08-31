@@ -97,7 +97,10 @@ def group_create(request):
         for username in student_usernames:
             try:
                 user = User.objects.get(username=username)
-                valid_students.append(user)
+                if user.userprofile.role == 'student':
+                    valid_students.append(user)
+                else:
+                    invalid_students.append(username)
             except User.DoesNotExist:
                 invalid_students.append(username)
                 continue
